@@ -31,30 +31,23 @@ export class TDQueriesDataProvider {
     this.apiKey = apiKey;
   }
 
-  async fetchList(): Promise<Query[]> {
-    const response = await fetch(
-      "https://console-development.treasuredata.com/v4/queries?minimalConnectorConfig=true",
-      {
-        headers: {
-          Authorization: "TD1 " + this.apiKey,
-          "Content-Type": "application/json; charset=utf-8"
-        }
+  _get(path: string): Promise<Response> {
+    return fetch(`https://console-development.treasuredata.com${path}`, {
+      headers: {
+        Authorization: "TD1 " + this.apiKey,
+        "Content-Type": "application/json; charset=utf-8"
       }
-    );
+    });
+  }
+
+  async fetchList(): Promise<Query[]> {
+    const response = await this._get("/v4/queries?minimalConnectorConfig=true");
     const data = await response.json();
     return data.map(responseToQuery);
   }
 
   async fetchQuery(id: string): Promise<string> {
-    const response = await fetch(
-      `https://console-development.treasuredata.com/v4/queries/${id}`,
-      {
-        headers: {
-          Authorization: "TD1 " + this.apiKey,
-          "Content-Type": "application/json; charset=utf-8"
-        }
-      }
-    );
+    const response = await this._get(`/v4/queries/${id}`);
     const data = await response.json();
     return data.query_string;
   }
