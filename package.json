@@ -1,0 +1,60 @@
+{
+  "name": "treasuredata",
+  "displayName": "treasuredata",
+  "description": "Create, edit, and run queries directly from VS Code",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.40.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:tdQueries",
+    "onCommand:extension.authenticate",
+    "onCommand:exentsion.runQuery"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.authenticate",
+        "title": "Treasure Data: Edit your API Key"
+      },
+      {
+        "command": "extension.runQuery",
+        "title": "Treasure Data: Run the current query",
+        "when": "viewItem == tdQuery"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "tdQueries",
+          "name": "TD Queries"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.1",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.11.7",
+    "@types/vscode": "^1.40.0",
+    "glob": "^7.1.5",
+    "mocha": "^6.2.2",
+    "typescript": "^3.6.4",
+    "tslint": "^5.20.0",
+    "vscode-test": "^1.2.2"
+  },
+  "dependencies": {
+    "vscode": "^1.1.36"
+  }
+}
