@@ -8,6 +8,7 @@ import {
   FileStat,
   FileType
 } from "vscode";
+import { TDQueriesDataProvider } from "./td-query-data-provider";
 
 // Globals that TypeScript doesn't like :)
 declare var TextEncoder: any;
@@ -21,10 +22,20 @@ export class TDQueriesFileProvider implements FileSystemProvider {
     FileChangeEvent[]
   >().event;
 
-  readFile(uri: Uri): Uint8Array {
+  constructor(public dataProvider: TDQueriesDataProvider) {
+    this.dataProvider = dataProvider;
+  }
+
+  async readFile(uri: Uri): Promise<Uint8Array> {
+    const { path } = uri;
+    const matches = path.match(/\/(\d+)/);
+    let contents = "";
+    if (matches) {
+      const [_, id] = matches;
+      contents = await this.dataProvider.fetchQuery(id);
+    }
     const encoder = new TextEncoder();
-    return encoder.encode(`SELECT * FROM users
-      WHERE id = 1`);
+    return encoder.encode(contents);
   }
 
   writeFile(

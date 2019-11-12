@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { TDQueriesTreeProvider } from "./td-queries-tree-provider";
 import { TDQueriesFileProvider } from "./td-query-file-provider";
+import { TDQueriesDataProvider } from "./td-query-data-provider";
 
 const API_STORAGE_KEY = "TD_API_KEY";
 
@@ -29,10 +30,17 @@ export function activate(context: vscode.ExtensionContext) {
 
   vscode.commands.registerCommand("extension.authenticate", authenticate);
   vscode.commands.registerCommand("extension.runQuery", runQuery);
+
+  const dataProvider = new TDQueriesDataProvider(
+    context.globalState.get(API_STORAGE_KEY, "")
+  );
+  const treeDataProvider = new TDQueriesTreeProvider(dataProvider);
+  const fileSystemProvider = new TDQueriesFileProvider(dataProvider);
+
   const queriesExplorer = vscode.window.createTreeView("tdQueries", {
     canSelectMany: false,
     showCollapseAll: false,
-    treeDataProvider: new TDQueriesTreeProvider()
+    treeDataProvider
   });
 
   queriesExplorer.onDidChangeSelection(function({ selection }) {
@@ -40,10 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showTextDocument(query.document);
   });
 
-  vscode.workspace.registerFileSystemProvider(
-    "tdQuery",
-    new TDQueriesFileProvider()
-  );
+  vscode.workspace.registerFileSystemProvider("tdQuery", fileSystemProvider);
 }
 
 export function deactivate() {}

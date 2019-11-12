@@ -9,13 +9,22 @@ import {
   TreeItemCollapsibleState,
   Range
 } from "vscode";
+import { TDQueriesDataProvider } from "./td-query-data-provider";
 
 /**
  * This is responsible for loading the queries to dusplay in the list
  */
 export class TDQueriesTreeProvider implements TreeDataProvider<Query> {
-  getChildren(element: Query | undefined): Query[] {
-    return [new Query("1243", "query 1", "a nice query", "Dan Reeves")];
+  constructor(public dataProvider: TDQueriesDataProvider) {
+    this.dataProvider = dataProvider;
+  }
+
+  async getChildren(element: Query | undefined): Promise<Query[]> {
+    const data = await this.dataProvider.fetchList();
+    const queryList = data.map(
+      q => new Query(q.id, q.name, q.type, q.owner, q.database)
+    );
+    return queryList;
   }
 
   getTreeItem(element: Query): TreeItem {
@@ -33,8 +42,9 @@ export class Query extends TreeItem {
   constructor(
     public readonly id: string,
     public readonly name: string,
-    public readonly description: string,
-    public readonly owner: string
+    public readonly type: string,
+    public readonly owner: string,
+    public readonly database: string
   ) {
     super(name, TreeItemCollapsibleState.None);
     this.document = new QueryDocument(
@@ -52,7 +62,9 @@ export class Query extends TreeItem {
 
   // Hover tooltip in sidebar
   get tooltip(): string {
-    return `ID: ${this.id} Owner: ${this.owner}`;
+    return `ID: ${this.id}
+Owner: ${this.owner}
+Database: ${this.database}`;
   }
 
   // Used to conditionally enable commands such a Run query when the active item is of type tdQuery
