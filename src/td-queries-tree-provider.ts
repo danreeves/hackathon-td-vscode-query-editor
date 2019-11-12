@@ -28,7 +28,8 @@ export class TDQueriesTreeProvider implements TreeDataProvider<Query> {
         if (!newQuery) {
           return;
         }
-        newQuery.id = id;
+        newQuery.setId(id);
+        console.log("PROMOTING", newQuery);
         this._cachedQueries.unshift(newQuery);
         this._newQueries = this._newQueries.filter(query => {
           return query.name !== name;
@@ -46,8 +47,15 @@ export class TDQueriesTreeProvider implements TreeDataProvider<Query> {
   _newQueries: Query[] = [];
   _cachedQueries: Query[] = [];
 
-  newQuery(name: string, type: string, database: string) {
-    const newQuery = new Query(undefined, name, type, undefined, database);
+  newQuery(name: string, type: string, databaseId: string) {
+    const newQuery = new Query(
+      undefined,
+      name,
+      type,
+      undefined,
+      "Unknown",
+      databaseId
+    );
     this._newQueries.push(newQuery);
     this._emitter.fire(null);
     return newQuery;
@@ -63,11 +71,18 @@ export class TDQueriesTreeProvider implements TreeDataProvider<Query> {
     if (!this._cachedQueries.length) {
       const data = await this.dataProvider.fetchList();
       queryList = data.map(
-        q => new Query(q.id, q.name, q.type, q.owner, q.database)
+        q =>
+          new Query(q.id, q.name, q.type, q.owner, q.databaseName, q.databaseId)
       );
       this._cachedQueries = queryList;
     }
     return this._newQueries.concat(queryList);
+  }
+
+  getParent() {
+    // Return null or undefined if element is a child of root.
+    // All our elements are children of root
+    return null;
   }
 
   getTreeItem(element: Query): TreeItem {
@@ -87,11 +102,28 @@ export class Query extends TreeItem {
     public name: string,
     public type: string,
     public owner: string | undefined,
-    public database: string
+    public databaseName: string,
+    public databaseId: string
   ) {
     super(name, TreeItemCollapsibleState.None);
     this.document = new QueryDocument(
-      Uri.parse(`tdQuery://hackathon/${name}.sql#${id}|${type}|${database}`), // URI
+      Uri.parse(`tdQuery://hackathon/${name}.sql#${id}|${type}|${databaseId}`), // URI
+      name, // File name
+      false, // Is closed?
+      EndOfLine.CRLF, // Line ending type
+      false, // Is dirty?
+      false, // Is untitled?
+      "sql", // Language ID
+      1, // Line count
+      1 // Version number
+    );
+  }
+
+  setId(id: string) {
+    const { name, type, databaseId } = this;
+    this.id = id;
+    this.document = new QueryDocument(
+      Uri.parse(`tdQuery://hackathon/${name}.sql#${id}|${type}|${databaseId}`), // URI
       name, // File name
       false, // Is closed?
       EndOfLine.CRLF, // Line ending type
@@ -107,7 +139,7 @@ export class Query extends TreeItem {
   get tooltip(): string {
     return `ID: ${this.id}
 Owner: ${this.owner}
-Database: ${this.database}`;
+Database: ${this.databaseName}`;
   }
 
   // Used to conditionally enable commands such a Run query when the active item is of type tdQuery

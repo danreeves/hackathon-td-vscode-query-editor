@@ -13,7 +13,8 @@ interface ApiQuery {
 interface Query {
   id: string;
   name: string;
-  database: string;
+  databaseName: string;
+  databaseId: string;
   type: string;
   owner: string;
 }
@@ -21,13 +22,15 @@ interface Query {
 function responseToQuery(data: ApiQuery): Query {
   const { id, name, type } = data;
   const owner = (data && data.user && data.user.name) || "";
-  const database = (data && data.database && data.database.name) || "";
+  const databaseName = (data && data.database && data.database.name) || "";
+  const databaseId = (data && data.database && data.database.id) || "";
   return {
     id,
     name,
     type,
     owner,
-    database
+    databaseName,
+    databaseId
   };
 }
 
@@ -42,6 +45,7 @@ export class TDQueriesDataProvider {
   }
 
   _get(path: string): Promise<Response> {
+    console.log("GET", path);
     return fetch(`https://console-development.treasuredata.com${path}`, {
       method: "GET",
       headers: {
@@ -52,22 +56,26 @@ export class TDQueriesDataProvider {
   }
 
   _patch(path: string, body: Object): Promise<Response> {
+    console.log("PATCH", path, JSON.stringify(body));
     return fetch(`https://console-development.treasuredata.com${path}`, {
       method: "PATCH",
       headers: {
         Authorization: "TD1 " + this.apiKey,
-        "Content-Type": "application/json; charset=utf-8"
+        "Content-Type": "application/json; charset=utf-8",
+        "key-format": "camelCase"
       },
       body: JSON.stringify(body)
     });
   }
 
   _post(path: string, body: Object): Promise<Response> {
+    console.log("POST", path, JSON.stringify(body));
     return fetch(`https://console-development.treasuredata.com${path}`, {
       method: "POST",
       headers: {
         Authorization: "TD1 " + this.apiKey,
-        "Content-Type": "application/json; charset=utf-8"
+        "Content-Type": "application/json; charset=utf-8",
+        "key-format": "camelCase"
       },
       body: JSON.stringify(body)
     });
@@ -94,6 +102,8 @@ export class TDQueriesDataProvider {
     if (response.ok) {
       return true;
     }
+    const d = await response.json();
+    console.log(d);
     return false;
   }
 
@@ -102,6 +112,17 @@ export class TDQueriesDataProvider {
     const data = await response.json();
     if (response.ok) {
       this.emitter.fire({ type: "saved", data });
+      return true;
+    }
+    return false;
+  }
+
+  async runQuery(body: any): Promise<boolean> {
+    const { id } = body;
+    const response = await this._post(`/v4/queries/${id}/jobs`, body);
+    const data = await response.json();
+    console.log("JOB RESPONSE", data);
+    if (response.ok) {
       return true;
     }
     return false;

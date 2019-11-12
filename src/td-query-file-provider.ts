@@ -20,17 +20,17 @@ function dataFromUri(
   id: string | undefined;
   name: string;
   type: string | undefined;
-  database: string | undefined;
+  databaseId: string | undefined;
 } {
   const { fragment, path } = uri;
   const matches = fragment.split("|");
-  const [id, type, database] = matches.map(str =>
+  const [id, type, databaseId] = matches.map(str =>
     str === "undefined" ? undefined : str
   );
 
   const name = path.replace(/^\//, "").replace(".sql", "");
 
-  return { id, name, type, database };
+  return { id, name, type, databaseId };
 }
 
 /**
@@ -46,6 +46,7 @@ export class TDQueriesFileProvider implements FileSystemProvider {
   }
 
   async readFile(uri: Uri): Promise<Uint8Array> {
+    console.log("READING", uri);
     const { id } = dataFromUri(uri);
     let contents = "";
     if (id) {
@@ -60,22 +61,22 @@ export class TDQueriesFileProvider implements FileSystemProvider {
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean }
   ): void {
-    const { id, name, database, type } = dataFromUri(uri);
+    const { id, name, databaseId, type } = dataFromUri(uri);
     const decoder = new TextDecoder("utf-8");
-    const query_string = decoder.decode(content);
+    const queryString = decoder.decode(content);
     if (id) {
       this.dataProvider.patchQuery(id, {
         name,
-        query_string,
+        queryString,
         type,
-        database_id: database
+        databaseId
       });
     } else {
       this.dataProvider.postQuery({
         name,
-        query_string,
+        queryString,
         type,
-        database_id: database
+        databaseId
       });
     }
   }

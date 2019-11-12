@@ -4,6 +4,7 @@ import { TDQueriesFileProvider } from "./td-query-file-provider";
 import { TDQueriesDataProvider } from "./td-query-data-provider";
 
 const API_STORAGE_KEY = "TD_API_KEY";
+declare var TextDecoder: any;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("Initialising Treasure Data");
@@ -26,6 +27,38 @@ export function activate(context: vscode.ExtensionContext) {
 
   async function runQuery() {
     vscode.window.showInformationMessage("Running query...");
+    const [query] = queriesExplorer.selection;
+    console.log("RUNNING", query);
+    const { id, name, type, databaseId } = query;
+    if (!id) {
+      vscode.window.showErrorMessage(
+        "You must save a query before running it!"
+      );
+      return;
+    }
+    const content = await fileSystemProvider.readFile(query.document.uri);
+    const decoder = new TextDecoder("utf-8");
+    const queryString = decoder.decode(content);
+    const data = {
+      id,
+      name,
+      type,
+      queryString,
+      databaseId,
+      connectorConfigId: null,
+      cron: null,
+      delay: 0,
+      description: null,
+      disableResultExport: true,
+      draft: false,
+      engineVersion: "stable",
+      priority: 0,
+      retryLimit: 0,
+      scheduledTime: null,
+      timeZone: "UTC"
+    };
+    const success = await dataProvider.runQuery(data);
+    console.log({ success });
   }
 
   vscode.commands.registerCommand("extension.authenticate", authenticate);
@@ -57,7 +90,8 @@ export function activate(context: vscode.ExtensionContext) {
     const type = await vscode.window.showQuickPick(["presto", "hive"]);
     const database = await vscode.window.showQuickPick(["11198"]);
     if (name && type && database) {
-      treeDataProvider.newQuery(name, type, database);
+      const newQuery = treeDataProvider.newQuery(name, type, database);
+      queriesExplorer.reveal(newQuery);
     } else {
       vscode.window.showErrorMessage(
         "You need to provide a name, type and database"
