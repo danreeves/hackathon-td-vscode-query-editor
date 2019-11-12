@@ -49,6 +49,28 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   vscode.workspace.registerFileSystemProvider("tdQuery", fileSystemProvider);
+
+  async function newQuery() {
+    const name = await vscode.window.showInputBox({
+      prompt: "Name your query"
+    });
+    const type = await vscode.window.showQuickPick(["presto", "hive"]);
+    const database = await vscode.window.showQuickPick(["11198"]);
+    if (name && type && database) {
+      treeDataProvider.newQuery(name, type, database);
+    } else {
+      vscode.window.showErrorMessage(
+        "You need to provide a name, type and database"
+      );
+    }
+  }
+  vscode.commands.registerCommand("extension.newQuery", newQuery);
+
+  function refresh() {
+    vscode.window.showInformationMessage("Refreshing list...");
+    treeDataProvider.refresh();
+  }
+  vscode.commands.registerCommand("extension.refresh", refresh);
 }
 
 export function deactivate() {}

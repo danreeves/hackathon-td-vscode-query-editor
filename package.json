@@ -12,7 +12,8 @@
   "activationEvents": [
     "onView:tdQueries",
     "onCommand:extension.authenticate",
-    "onCommand:exentsion.runQuery"
+    "onCommand:exentsion.runQuery",
+    "onCommand:exentsion.refresh"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -25,6 +26,14 @@
         "command": "extension.runQuery",
         "title": "Treasure Data: Run the current query",
         "when": "viewItem == tdQuery"
+      },
+      {
+        "command": "extension.newQuery",
+        "title": "New query"
+      },
+      {
+        "command": "extension.refresh",
+        "title": "Treasure Data: Refresh list of queries"
       }
     ],
     "views": {
@@ -32,6 +41,14 @@
         {
           "id": "tdQueries",
           "name": "TD Queries"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "extension.newQuery",
+          "when": "view == tdQueries"
         }
       ]
     }

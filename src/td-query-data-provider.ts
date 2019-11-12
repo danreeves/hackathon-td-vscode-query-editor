@@ -1,4 +1,4 @@
-import { EventEmitter } from "vscode";
+import { EventEmitter, Event } from "vscode";
 import fetch, { Response } from "node-fetch";
 
 interface ApiQuery {
@@ -34,9 +34,11 @@ function responseToQuery(data: ApiQuery): Query {
 export class TDQueriesDataProvider {
   apiKey: string | undefined;
   queries: Query[] = [];
+  emitter: EventEmitter<{ type: string; data: ApiQuery }>;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+    this.emitter = new EventEmitter();
   }
 
   _get(path: string): Promise<Response> {
@@ -52,6 +54,17 @@ export class TDQueriesDataProvider {
   _patch(path: string, body: Object): Promise<Response> {
     return fetch(`https://console-development.treasuredata.com${path}`, {
       method: "PATCH",
+      headers: {
+        Authorization: "TD1 " + this.apiKey,
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify(body)
+    });
+  }
+
+  _post(path: string, body: Object): Promise<Response> {
+    return fetch(`https://console-development.treasuredata.com${path}`, {
+      method: "POST",
       headers: {
         Authorization: "TD1 " + this.apiKey,
         "Content-Type": "application/json; charset=utf-8"
@@ -79,6 +92,16 @@ export class TDQueriesDataProvider {
   async patchQuery(id: string, patch: Object): Promise<boolean> {
     const response = await this._patch(`/v4/queries/${id}`, patch);
     if (response.ok) {
+      return true;
+    }
+    return false;
+  }
+
+  async postQuery(body: Object): Promise<boolean> {
+    const response = await this._post(`/v4/queries`, body);
+    const data = await response.json();
+    if (response.ok) {
+      this.emitter.fire({ type: "saved", data });
       return true;
     }
     return false;

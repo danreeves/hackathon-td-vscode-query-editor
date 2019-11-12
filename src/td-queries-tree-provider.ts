@@ -7,7 +7,9 @@ import {
   Position,
   TextLine,
   TreeItemCollapsibleState,
-  Range
+  Range,
+  Event,
+  EventEmitter
 } from "vscode";
 import { TDQueriesDataProvider } from "./td-query-data-provider";
 
@@ -17,14 +19,55 @@ import { TDQueriesDataProvider } from "./td-query-data-provider";
 export class TDQueriesTreeProvider implements TreeDataProvider<Query> {
   constructor(public dataProvider: TDQueriesDataProvider) {
     this.dataProvider = dataProvider;
+    this.dataProvider.emitter.event(({ type, data }) => {
+      if (type === "saved") {
+        const { name, id } = data;
+        const newQuery = this._newQueries.find(query => {
+          return query.name === name;
+        });
+        if (!newQuery) {
+          return;
+        }
+        newQuery.id = id;
+        this._cachedQueries.unshift(newQuery);
+        this._newQueries = this._newQueries.filter(query => {
+          return query.name !== name;
+        });
+        this._emitter.fire(null);
+      }
+    });
+  }
+
+  readonly _emitter = new EventEmitter<Query | null | undefined>();
+
+  readonly onDidChangeTreeData: Event<Query | null | undefined> = this._emitter
+    .event;
+
+  _newQueries: Query[] = [];
+  _cachedQueries: Query[] = [];
+
+  newQuery(name: string, type: string, database: string) {
+    const newQuery = new Query(undefined, name, type, undefined, database);
+    this._newQueries.push(newQuery);
+    this._emitter.fire(null);
+    return newQuery;
+  }
+
+  refresh() {
+    this._cachedQueries = [];
+    this._emitter.fire(null);
   }
 
   async getChildren(element: Query | undefined): Promise<Query[]> {
-    const data = await this.dataProvider.fetchList();
-    const queryList = data.map(
-      q => new Query(q.id, q.name, q.type, q.owner, q.database)
-    );
-    return queryList;
+    let queryList = this._cachedQueries;
+    if (!this._cachedQueries.length) {
+      const data = await this.dataProvider.fetchList();
+      queryList = data.map(
+        q => new Query(q.id, q.name, q.type, q.owner, q.database)
+      );
+      this._cachedQueries = queryList;
+    }
+    return this._newQueries.concat(queryList);
   }
 
   getTreeItem(element: Query): TreeItem {
@@ -40,15 +83,15 @@ export class Query extends TreeItem {
 
   // Name and Description displayed in the sidebar
   constructor(
-    public readonly id: string,
-    public readonly name: string,
-    public readonly type: string,
-    public readonly owner: string,
-    public readonly database: string
+    public id: string | undefined,
+    public name: string,
+    public type: string,
+    public owner: string | undefined,
+    public database: string
   ) {
     super(name, TreeItemCollapsibleState.None);
     this.document = new QueryDocument(
-      Uri.parse(`tdQuery://hackathon/${id}-${name}.sql`), // URI
+      Uri.parse(`tdQuery://hackathon/${name}.sql#${id}|${type}|${database}`), // URI
       name, // File name
       false, // Is closed?
       EndOfLine.CRLF, // Line ending type
@@ -126,11 +169,6 @@ export class QueryDocument implements TextDocument {
   }
 
   getText(range?: Range): string {
-    return `hello this is text
-    
-    aaaaaaaaaaaaaaaaaaaaaaaaaa
-    affffffffffffffffffffffffffffffffffffffffffff
-    bbbbbbbbb
-    `;
+    return "";
   }
 }

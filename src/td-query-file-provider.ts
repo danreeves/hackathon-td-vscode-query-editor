@@ -14,16 +14,23 @@ import { TDQueriesDataProvider } from "./td-query-data-provider";
 declare var TextEncoder: any;
 declare var TextDecoder: any;
 
-const ID_FROM_PATH_REGEX = /\/(\d+)/;
+function dataFromUri(
+  uri: Uri
+): {
+  id: string | undefined;
+  name: string;
+  type: string | undefined;
+  database: string | undefined;
+} {
+  const { fragment, path } = uri;
+  const matches = fragment.split("|");
+  const [id, type, database] = matches.map(str =>
+    str === "undefined" ? undefined : str
+  );
 
-function idFromUri(uri: Uri): string | undefined {
-  const { path } = uri;
-  const matches = path.match(ID_FROM_PATH_REGEX);
-  if (!matches) {
-    return undefined;
-  }
-  const [_, id] = matches;
-  return id;
+  const name = path.replace(/^\//, "").replace(".sql", "");
+
+  return { id, name, type, database };
 }
 
 /**
@@ -39,7 +46,7 @@ export class TDQueriesFileProvider implements FileSystemProvider {
   }
 
   async readFile(uri: Uri): Promise<Uint8Array> {
-    const id = idFromUri(uri);
+    const { id } = dataFromUri(uri);
     let contents = "";
     if (id) {
       contents = await this.dataProvider.fetchQuery(id);
@@ -53,11 +60,23 @@ export class TDQueriesFileProvider implements FileSystemProvider {
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean }
   ): void {
-    const id = idFromUri(uri);
+    const { id, name, database, type } = dataFromUri(uri);
     const decoder = new TextDecoder("utf-8");
     const query_string = decoder.decode(content);
     if (id) {
-      this.dataProvider.patchQuery(id, { query_string });
+      this.dataProvider.patchQuery(id, {
+        name,
+        query_string,
+        type,
+        database_id: database
+      });
+    } else {
+      this.dataProvider.postQuery({
+        name,
+        query_string,
+        type,
+        database_id: database
+      });
     }
   }
 
