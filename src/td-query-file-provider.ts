@@ -14,6 +14,18 @@ import { TDQueriesDataProvider } from "./td-query-data-provider";
 declare var TextEncoder: any;
 declare var TextDecoder: any;
 
+const ID_FROM_PATH_REGEX = /\/(\d+)/;
+
+function idFromUri(uri: Uri): string | undefined {
+  const { path } = uri;
+  const matches = path.match(ID_FROM_PATH_REGEX);
+  if (!matches) {
+    return undefined;
+  }
+  const [_, id] = matches;
+  return id;
+}
+
 /**
  * This is responsible for letting VS Code open the query as a file in the editor window
  */
@@ -27,11 +39,9 @@ export class TDQueriesFileProvider implements FileSystemProvider {
   }
 
   async readFile(uri: Uri): Promise<Uint8Array> {
-    const { path } = uri;
-    const matches = path.match(/\/(\d+)/);
+    const id = idFromUri(uri);
     let contents = "";
-    if (matches) {
-      const [_, id] = matches;
+    if (id) {
       contents = await this.dataProvider.fetchQuery(id);
     }
     const encoder = new TextEncoder();
@@ -43,12 +53,12 @@ export class TDQueriesFileProvider implements FileSystemProvider {
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean }
   ): void {
+    const id = idFromUri(uri);
     const decoder = new TextDecoder("utf-8");
-    console.log(
-      "TDQueriesFileProvider writeFile",
-      uri.path,
-      decoder.decode(content)
-    );
+    const query_string = decoder.decode(content);
+    if (id) {
+      this.dataProvider.patchQuery(id, { query_string });
+    }
   }
 
   delete(uri: Uri): void {
